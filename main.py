@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from torch_geometric.nn import GraphConv
+from torch.optim.lr_scheduler import MultiplicativeLR
 
 from ogb.graphproppred import PygGraphPropPredDataset
 from torch_geometric.data import DataLoader
@@ -19,6 +20,8 @@ split_idx = dataset.get_idx_split()
 train_loader = DataLoader(dataset[split_idx["train"]], batch_size=64, shuffle=True)
 valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=64, shuffle=False)
 test_loader = DataLoader(dataset[split_idx["test"]], batch_size=64, shuffle=False)
+
+# With have 3.5% of positive label in our dataset
 
 IN_CHANNELS = 100
 NUMBER_HIDDEN_LAYERS = 1
@@ -37,6 +40,7 @@ model.to(device) # puts model on GPU / CPU
 print("Model's architecture is : {} \n".format(model))
 # optimization hyperparameters
 optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) # try lr=0.01, momentum=0.9
+scheduler = MultiplicativeLR(optimizer, lr_lambda= lambda epoch : 0.95) # multiplies lr by 0.95 at each epoch
 loss_fn = nn.CrossEntropyLoss()
 
 print("## TRAINING ##")
@@ -55,6 +59,7 @@ for epoch in range(EPOCHS):
         running_train_loss += loss.item() * data.x.size(0)
         loss.backward()
         optimizer.step()
+        scheduler.step()
         if batch_idx %100 ==0:
             print('epoch {} batch {} [{}/{}] training loss: {}'.format(epoch,batch_idx,batch_idx*len(data),
                     len(train_loader.dataset),loss.item()))
@@ -65,7 +70,6 @@ for epoch in range(EPOCHS):
     correct, concat_prediction, concat_target, running_val_loss = 0, torch.empty(0).to(device), torch.empty(0).to(device), 0
     with torch.no_grad():
         for batch_idx, data in enumerate(valid_loader):
-            optimizer.zero_grad()
             data = data.to(device)
             data.y = data.y.view(-1)
             out = model(data)
