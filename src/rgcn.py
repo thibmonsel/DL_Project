@@ -1,84 +1,48 @@
-import argparse
-import os.path as osp
+
+#https://github.com/rusty1s/pytorch_geometric/blob/master/examples/rgcn.py
+#taking into account only nodes and not edges attributes
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.datasets import Entities
-from torch_geometric.utils import k_hop_subgraph
-from torch_geometric.nn import RGCNConv, FastRGCNConv
+from torch_geometric.nn import GraphConv, global_add_pool, RGCNConv
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str,
-                    choices=['AIFB', 'MUTAG', 'BGS', 'AM'])
-args = parser.parse_args()
-
-# Trade memory consumption for faster computation.
-if args.dataset in ['AIFB', 'MUTAG']:
-    RGCNConv = FastRGCNConv
-
-path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'Entities')
-dataset = Entities(path, args.dataset)
-data = dataset[0]
-
-# BGS and AM graphs are too big to process them in a full-batch fashion.
-# Since our model does only make use of a rather small receptive field, we
-# filter the graph to only contain the nodes that are at most 2-hop neighbors
-# away from any training/test node.
-node_idx = torch.cat([data.train_idx, data.test_idx], dim=0)
-node_idx, edge_index, mapping, edge_mask = k_hop_subgraph(
-    node_idx, 2, data.edge_index, relabel_nodes=True)
-
-data.num_nodes = node_idx.size(0)
-data.edge_index = edge_index
-data.edge_type = data.edge_type[edge_mask]
-data.train_idx = mapping[:data.train_idx.size(0)]
-data.test_idx = mapping[data.train_idx.size(0):]
-
+from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 class Net(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_channels):
         super(Net, self).__init__()
-        self.conv1 = RGCNConv(data.num_nodes, 16, dataset.num_relations,
-                              num_bases=30)
-        self.conv2 = RGCNConv(16, dataset.num_classes, dataset.num_relations,
-                              num_bases=30)
+        self.hidden_channels = hidden_channels
+        self.atom_encoder = AtomEncoder(emb_dim=hidden_channels)
 
-    def forward(self, edge_index, edge_type):
-        print(edge_index.shape, edge_type.shape)
-        x = F.relu(self.conv1(None, edge_index, edge_type))
-        print(x.shape)
-        x = self.conv2(x, edge_index, edge_type)
-        return F.log_softmax(x, dim=1)
+        self.rconv = RGCNConv(in_channels=self.hidden_channels, out_channels=64, num_relations=60)
+        
+        self.conv1 = GraphConv(in_channels= 64, out_channels=64, aggr='max')
+        self.conv2 = GraphConv(in_channels = 64, out_channels = 32, aggr='max')
+        
+        self.linear1 = nn.Linear(32, 16)
+        self.linear2 = nn.Linear(16, 2)
+            
+    def forward(self, data):
+        x = self.atom_encoder(data.x)
+        edge_index = data.edge_index
+        edge_attr = data.edge_attr
+        edge_attr = torch.Tensor([ edge_type[0] + edge_type[1]*5 + edge_type[2]*30 for edge_type in edge_attr])
 
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu') if args.dataset == 'AM' else device
-model, data = Net().to(device), data.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=0.0005)
-
-
-def train():
-    model.train()
-    optimizer.zero_grad()
-    out = model(data.edge_index, data.edge_type)
-    print('out and y',out.shape,  data.train_y.shape)
-    loss = F.nll_loss(out[data.train_idx], data.train_y)
-    loss.backward()
-    optimizer.step()
-    return loss.item()
-
-
-@torch.no_grad()
-def test():
-    model.eval()
-    pred = model(data.edge_index, data.edge_type).argmax(dim=-1)
-    train_acc = pred[data.train_idx].eq(data.train_y).to(torch.float).mean()
-    test_acc = pred[data.test_idx].eq(data.test_y).to(torch.float).mean()
-    return train_acc.item(), test_acc.item()
-
-
-for epoch in range(1, 51):
-    loss = train()
-    train_acc, test_acc = test()
-    print(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f} '
-          f'Test: {test_acc:.4f}')
+        x = self.rconv(x, edge_index, edge_attr)
+        x = F.relu(x)
+        
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        
+        x = self.conv2(x, data.edge_index)
+        x = F.relu(x)
+        #print(x.shape)
+        x = global_add_pool(x, data.batch)
+        #print(x.shape)
+        x = F.relu(self.linear1(x))
+        x = self.linear2(x)
+        #print(x.shape)
+        #print('batch size')
+        #print('-----')
+        return x
