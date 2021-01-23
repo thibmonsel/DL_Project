@@ -1,0 +1,3 @@
+[submodule "pytorch-balanced-batch"]
+	path = pytorch-balanced-batch
+	url = https://github.com/galatolofederico/pytorch-balanced-batch.git
