@@ -46,3 +46,5 @@ class Net(torch.nn.Module):
         #print('batch size')
         #print('-----')
         return x
+
+

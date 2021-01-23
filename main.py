@@ -1,6 +1,3 @@
-import os, sys 
-sys.path.append("./src")
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,14 +5,22 @@ from torch.autograd import Variable
 from torch_geometric.nn import GraphConv
 from torch.optim.lr_scheduler import MultiplicativeLR
 
-from ogb.graphproppred import PygGraphPropPredDataset
+from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from torch_geometric.data import DataLoader
-from ignite.contrib.metrics.roc_auc import roc_auc_compute_fn
 import matplotlib.pyplot as plt
-from gnn import Net, Net2
+from src.gnn import Net
 
 dataset = PygGraphPropPredDataset(name = "ogbg-molhiv", root='../')
- 
+evaluator = Evaluator("ogbg-molhiv")
+
+# train_idx, test_idx = train_test_split(np.arange(labels.shape[0]), stratify = labels, shuffle=True, test_size=0.3)
+# train_idx.sort(), test_idx.sort()
+# train_idx, test_idx = torch.from_numpy(train_idx), torch.from_numpy(test_idx)
+
+# #stratified test train split but not stratified batches
+# train_loader = DataLoader(dataset[train_idx],  batch_size=64, shuffle=True)
+# test_loader = DataLoader(dataset[test_idx] ,batch_size=64, shuffle=False)
+
 split_idx = dataset.get_idx_split() 
 train_loader = DataLoader(dataset[split_idx["train"]], batch_size=64, shuffle=True)
 valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=64, shuffle=False)
@@ -30,14 +35,13 @@ HIDDEN_OUT_CHANNEL = 64
 OUT_CHANNEL = 32
 POOL_LAYERS = ['add', 'max', 'mean', 'sort', 'global_attention']
 k = 3
-EPOCHS = 1
+EPOCHS = 5
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[0])
+model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2])
 model.to(device) # puts model on GPU / CPU
 
-print("Model's architecture is : {} \n".format(model))
 # optimization hyperparameters
 optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) # try lr=0.01, momentum=0.9
 scheduler = MultiplicativeLR(optimizer, lr_lambda= lambda epoch : 0.95) # multiplies lr by 0.95 at each epoch
@@ -78,10 +82,9 @@ for epoch in range(EPOCHS):
             prediction = out.argmax(dim=1, keepdim=True) 
             concat_prediction = torch.cat((concat_prediction, prediction), 0)
             concat_target = torch.cat((concat_target, data.y), 0)
-            correct += prediction.eq(data.y.view_as(prediction)).sum().item()
-    roc_auc = roc_auc_compute_fn(concat_prediction.to("cpu"), concat_target.to("cpu"))
     loss_val.append(running_val_loss / len(valid_loader.dataset))
-    print('ROC_AUC score : {} \n'.format(roc_auc))
+    input_dict = {"y_true": concat_target.unsqueeze(1).numpy(), "y_pred": concat_prediction.numpy()}
+    print("ROC_AUC score : {} --- ".format(evaluator.eval(input_dict)['rocauc']))
     
 plt.title("Training and validation loss curves")
 plt.plot(loss_train, 'go-',label="train")
