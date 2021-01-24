@@ -5,7 +5,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, GlobalAttention
+from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, GlobalAttention, BatchNorm
 
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
@@ -25,15 +25,17 @@ class Net(torch.nn.Module):
         self.graph_conv_list = nn.ModuleList()
         self.graph_conv_list.append(GraphConv(in_channels= self.in_channels, out_channels=self.hidden_out_channel, aggr=self.aggr))
 
+        self.batchnorm = BatchNorm(in_channels=self.hidden_out_channel)
+
         if self.number_hidden_layers != 0 : 
             for i in range(self.number_hidden_layers):
                 self.graph_conv_list.append(GraphConv(in_channels= self.hidden_out_channel, out_channels= self.hidden_out_channel, aggr=self.aggr))
                     
         self.graph_conv_list.append(GraphConv(in_channels = self.hidden_out_channel, out_channels = self.out_channel, aggr=self.aggr))
-        
+                
         if self.pool_layer == 'global_attention' :
             self.global_att = GlobalAttention(nn.Sequential(nn.Linear(self.out_channel, 10), nn.Linear(10, 1)))
-            
+         
         self.linear1 = nn.Linear(self.k*self.out_channel, 16)
         self.linear2 = nn.Linear(16, 2)
             
@@ -41,9 +43,12 @@ class Net(torch.nn.Module):
         x = self.atom_encoder(data.x)
         edge_index = data.edge_index
         
-        for layer in self.graph_conv_list : 
+        for i, layer in enumerate(self.graph_conv_list) : 
             x = layer(x, edge_index)
-            x = F.relu(x)      
+            x = F.relu(x)
+            if i == len(self.graph_conv_list) - 1: continue
+            x = self.batchnorm(x)  
+        
         
         if self.pool_layer == 'add':
             x = global_add_pool(x, data.batch)
