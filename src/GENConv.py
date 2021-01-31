@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.nn import Conv1d,MaxPool1d
+from torch.nn import Conv2d, MaxPool2d
 import torch.nn.functional as F
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, GlobalAttention, GENConv
 

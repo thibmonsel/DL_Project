@@ -7,17 +7,11 @@ import matplotlib.pyplot as plt
 
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from torch_geometric.data import DataLoader
-from ignite.contrib.metrics.roc_auc import roc_auc_compute_fn
+
+from data_loader import TrainValTestLoader
+from utils import save_ckpt
 from src.vanillagnn import VanNet
 from src.gnn import Net
-
-# train_idx, test_idx = train_test_split(np.arange(labels.shape[0]), stratify = labels, shuffle=True, test_size=0.3)
-# train_idx.sort(), test_idx.sort()
-# train_idx, test_idx = torch.from_numpy(train_idx), torch.from_numpy(test_idx)
-
-# #stratified test train split but not stratified batches
-# train_loader = DataLoader(dataset[train_idx],  batch_size=64, shuffle=True)
-# test_loader = DataLoader(dataset[test_idx] ,batch_size=64, shuffle=False)
 
 # With have 3.5% of positive label in our dataset
 
@@ -42,9 +36,11 @@ def train(model, device, train_loader, loss_fn, optimizer):
 def eval(model,device, loader, evaluator):
     running_eval_loss = 0
     model.eval()
+    #y = 0 
     concat_prediction, concat_target = torch.empty(0), torch.empty(0)
     with torch.no_grad():
         for step, data in enumerate(loader):
+            #y += data.y.sum()
             optimizer.zero_grad()
             data = data.to(device)
             data.y = data.y.flatten()
@@ -55,6 +51,8 @@ def eval(model,device, loader, evaluator):
             concat_prediction = torch.cat((concat_prediction, prediction), 0)
             concat_target = torch.cat((concat_target, data.y), 0)
         input_dict = {"y_true": concat_target.unsqueeze(1).numpy(), "y_pred": concat_prediction.numpy()}
+        
+    #print("y", y/(len(loader.dataset)))
     return evaluator.eval(input_dict)['rocauc'], running_eval_loss / len(loader.dataset)
 
         
@@ -62,14 +60,16 @@ if __name__ == '__main__':
     dataset = PygGraphPropPredDataset(name = "ogbg-molhiv", root='../')
     evaluator = Evaluator("ogbg-molhiv")    
 
-    split_idx = dataset.get_idx_split() 
+    #split_idx = dataset.get_idx_split() 
+    splitter = TrainValTestLoader(dataset)
+    split_idx = splitter.merge_positive_negative_indices()
     train_loader = DataLoader(dataset[split_idx["train"]], batch_size=64, shuffle=True)
     valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=64, shuffle=False)
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=64, shuffle=False)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    
+    print()
     IN_CHANNELS = 100
     NUMBER_HIDDEN_LAYERS = 2
     AGGR = ['add', 'max', 'mean']
@@ -79,8 +79,8 @@ if __name__ == '__main__':
     k = 3
     EPOCHS = 100
 
-    #model = VanNet(100)
-    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[0])
+    model = VanNet(100)
+    #model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[0])
     model.to(device)
 
     # optimization hyperparameters
@@ -94,7 +94,7 @@ if __name__ == '__main__':
             'highest_train': 0}
     
     test_l, train_l = [], []
-    for epoch in range(10):
+    for epoch in range(40):
         print("Epoch {}".format(epoch))
         print("Training...")
         train(model, device, train_loader, loss_fn, optimizer) 
@@ -115,6 +115,12 @@ if __name__ == '__main__':
             results['highest_valid'] = valid_roc
             results['final_train'] = train_roc
             results['final_test'] = test_roc
+            
+            # save_ckpt(model, optimizer,
+            #           round(valid_roc, 4), epoch,
+            #           ".",
+            #           "", name_post='valid_best')
+
 
 print("Post training Results {}".format(results))
 plt.title("Training and validation loss curves")

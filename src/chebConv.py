@@ -31,7 +31,6 @@ class Net2(torch.nn.Module):
     def forward(self, data):
         x = self.atom_encoder(data.x)
         edge_index = data.edge_index
-        print(x.shape)
         x = F.relu(self.conv1(x, edge_index))
         #x = F.relu(self.conv2(x, edge_index))
         x = F.relu(self.conv3(x, edge_index))

@@ -10,7 +10,7 @@ from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, glo
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 class Net(torch.nn.Module):
-    def __init__(self, in_channels,  number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1):
+    def __init__(self, in_channels, number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1):
         super(Net, self).__init__()
         self.in_channels = in_channels
         self.number_hidden_layers = number_hidden_layers #number of hidden GraphConv layers
