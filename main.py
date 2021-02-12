@@ -48,8 +48,8 @@ def eval(model,device, loader, evaluator):
             loss = loss_fn(out, data.y)
             running_eval_loss +=loss.item()
             prediction = out.argmax(dim=1, keepdim=True) 
-            concat_prediction = torch.cat((concat_prediction, prediction), 0)
-            concat_target = torch.cat((concat_target, data.y), 0)
+            concat_prediction = torch.cat((concat_prediction, prediction.cpu()), 0)
+            concat_target = torch.cat((concat_target, data.y.cpu()), 0)
         input_dict = {"y_true": concat_target.unsqueeze(1).numpy(), "y_pred": concat_prediction.numpy()}
         
     #print("y", y/(len(loader.dataset)))
@@ -69,7 +69,6 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    print()
     IN_CHANNELS = 100
     NUMBER_HIDDEN_LAYERS = 2
     AGGR = ['add', 'max', 'mean']
@@ -79,13 +78,15 @@ if __name__ == '__main__':
     k = 3
     EPOCHS = 100
 
-    model = VanNet(100)
-    #model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[0])
+    #model = VanNet(100)
+    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[1])
     model.to(device)
 
     # optimization hyperparameters
     optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) 
-    loss_fn = nn.CrossEntropyLoss(weight=torch.Tensor([1, 3]))
+    weights = torch.Tensor([1, 3])
+    weights = weights.to(device)
+    loss_fn = nn.CrossEntropyLoss(weight=weights)
     #scheduler = MultiplicativeLR(optimizer, lr_lambda= lambda epoch : 0.95)
 
     results = {'highest_valid': 0,
@@ -93,8 +94,8 @@ if __name__ == '__main__':
             'final_test': 0,
             'highest_train': 0}
     
-    test_l, train_l = [], []
-    for epoch in range(40):
+    valid_l, train_l, valid_roc_auc, train_roc_auc = [], [], [], []
+    for epoch in range(EPOCHS):
         print("Epoch {}".format(epoch))
         print("Training...")
         train(model, device, train_loader, loss_fn, optimizer) 
@@ -106,7 +107,8 @@ if __name__ == '__main__':
         print("Train  ROC_AUC score : {}".format(train_roc))
         print("Validation ROC_AUC score : {}".format(valid_roc))
         
-        test_l.append(test_loss), train_l.append(train_loss)
+        valid_l.append(valid_loss), train_l.append(train_loss),
+        valid_roc_auc.append(valid_roc), train_roc_auc.append(train_roc)
         
         if train_roc > results['highest_train']:
             results['highest_train'] = train_roc
@@ -131,3 +133,13 @@ plt.ylabel("Loss")
 plt.legend()
 plt.savefig("plots/GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
 plt.show()
+
+plt.title("Training and validation roc_auc curves")
+plt.plot(train_roc_auc, 'go-',label="train")
+plt.plot(valid_roc_auc, 'rs-', label='val')
+plt.xlabel("Epochs")
+plt.ylabel("ROC_AUC")
+plt.legend()
+plt.savefig("plots/GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+plt.show()
+

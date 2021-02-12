@@ -19,3 +19,4 @@ def save_ckpt(model, optimizer, loss, epoch, save_path, name_pre, name_post='bes
     filename = '{}/{}_{}.pth'.format(save_path, name_pre, name_post)
     torch.save(state, filename)
     print('model has been saved as {}'.format(filename))
+    

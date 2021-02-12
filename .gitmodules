@@ -1,0 +1,3 @@
+[submodule "periodic-table"]
+	path = periodic-table
+	url = git@github.com:sugarlabs/periodic-table.git
