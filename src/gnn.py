@@ -65,3 +65,21 @@ class Net(torch.nn.Module):
         x = self.linear2(x)
         
         return x
+
+    def reset_parameters(self):
+        
+        #conv layer
+        for graphconv in self.graph_conv_list:
+            graphconv.reset_parameters()
+        
+        #batch norm
+        self.batchnorm.reset_parameters()
+        
+        #global pool
+        try :
+            self.pool_layer.reset_parameters()
+        except Exception as e: pass
+    
+        self.linear1.reset_parameters()
+        self.linear2.reset_parameters()
+        

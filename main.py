@@ -60,9 +60,20 @@ if __name__ == '__main__':
     dataset = PygGraphPropPredDataset(name = "ogbg-molhiv", root='../')
     evaluator = Evaluator("ogbg-molhiv")    
 
-    #split_idx = dataset.get_idx_split() 
-    splitter = TrainValTestLoader(dataset)
-    split_idx = splitter.merge_positive_negative_indices()
+    # splitter = TrainValTestLoader(dataset)
+    # split_idx = splitter.merge_positive_negative_indices()
+    # split_idx_neg, split_idx_pos = splitter.get_train_val_test_splitters()
+    # ratio = int(len(split_idx_neg["neg_train"])/len(split_idx_pos["pos_train"]))
+    
+    # train_loader_neg = DataLoader(dataset[torch.from_numpy(split_idx_neg["neg_train"])], batch_size=3, shuffle=True)
+    # valid_loader_neg = DataLoader(dataset[torch.from_numpy(split_idx_neg["neg_valid"])], batch_size=3, shuffle=False)
+    # test_loader_neg = DataLoader(dataset[torch.from_numpy(split_idx_neg["neg_test"])], batch_size=3, shuffle=False)
+    
+    # train_loader_pos = DataLoader(dataset[torch.from_numpy(split_idx_pos["pos_train"])], batch_size=3*ratio, shuffle=True)
+    # valid_loader_pos = DataLoader(dataset[torch.from_numpy(split_idx_pos["pos_valid"])], batch_size=3*ratio, shuffle=False)
+    # test_loader_pos = DataLoader(dataset[torch.from_numpy(split_idx_pos["pos_test"])], batch_size=3*ratio, shuffle=False)
+    
+    split_idx = dataset.get_idx_split() 
     train_loader = DataLoader(dataset[split_idx["train"]], batch_size=64, shuffle=True)
     valid_loader = DataLoader(dataset[split_idx["valid"]], batch_size=64, shuffle=False)
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=64, shuffle=False)
@@ -76,70 +87,84 @@ if __name__ == '__main__':
     OUT_CHANNEL = 32
     POOL_LAYERS = ['add', 'max', 'mean', 'sort', 'global_attention']
     k = 3
-    EPOCHS = 100
+    EPOCHS = 3
 
     #model = VanNet(100)
     model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[1])
     model.to(device)
 
     # optimization hyperparameters
-    optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) 
-    weights = torch.Tensor([1, 3])
+    optimizer = torch.optim.Adam(model.parameters(), lr = 0.0001) 
+    weights = torch.Tensor([1, 10])
     weights = weights.to(device)
     loss_fn = nn.CrossEntropyLoss(weight=weights)
     #scheduler = MultiplicativeLR(optimizer, lr_lambda= lambda epoch : 0.95)
 
-    results = {'highest_valid': 0,
-            'final_train': 0,
-            'final_test': 0,
-            'highest_train': 0}
-    
-    valid_l, train_l, valid_roc_auc, train_roc_auc = [], [], [], []
-    for epoch in range(EPOCHS):
-        print("Epoch {}".format(epoch))
-        print("Training...")
-        train(model, device, train_loader, loss_fn, optimizer) 
-        
-        print("Evaluating...")
-        train_roc, train_loss= eval(model,device, train_loader, evaluator)
-        valid_roc, valid_loss =  eval(model,device, valid_loader, evaluator)
-        test_roc, test_loss= eval(model, device, test_loader, evaluator)
-        print("Train  ROC_AUC score : {}".format(train_roc))
-        print("Validation ROC_AUC score : {}".format(valid_roc))
-        
-        valid_l.append(valid_loss), train_l.append(train_loss),
-        valid_roc_auc.append(valid_roc), train_roc_auc.append(train_roc)
-        
-        if train_roc > results['highest_train']:
-            results['highest_train'] = train_roc
+    test_perfs = []
+    for run in range(1,11) :
+        print()
+        print(f'Run {run}:')
+        print()
 
-        if valid_roc > results['highest_valid']:
-            results['highest_valid'] = valid_roc
-            results['final_train'] = train_roc
-            results['final_test'] = test_roc
+        model.reset_parameters()
+        
+        results = {'highest_valid': 0,
+                'final_train': 0,
+                'final_test': 0,
+                'highest_train': 0}
+        
+        valid_l, train_l, valid_roc_auc, train_roc_auc = [], [], [], []
+        for epoch in range(EPOCHS):
+            print("Epoch {}".format(epoch))
+            print("Training...")
+            train(model, device, train_loader, loss_fn, optimizer) 
+
+            print("Evaluating...")
+            train_roc, train_loss= eval(model,device, train_loader, evaluator)
+            valid_roc, valid_loss =  eval(model,device, valid_loader, evaluator)
+            test_roc, test_loss= eval(model, device, test_loader, evaluator)
+            print("Train  ROC_AUC score : {}".format(train_roc))
+            print("Validation ROC_AUC score : {}".format(valid_roc))
             
-            # save_ckpt(model, optimizer,
-            #           round(valid_roc, 4), epoch,
-            #           ".",
-            #           "", name_post='valid_best')
+            valid_l.append(valid_loss), train_l.append(train_loss),
+            valid_roc_auc.append(valid_roc), train_roc_auc.append(train_roc)
+            
+            if train_roc > results['highest_train']:
+                results['highest_train'] = train_roc
 
+            if valid_roc > results['highest_valid']:
+                results['highest_valid'] = valid_roc
+                results['final_train'] = train_roc
+                results['final_test'] = test_roc
+                
+                # save_ckpt(model, optimizer,
+                #           round(valid_roc, 4), epoch,
+                #           ".",
+                #           "", name_post='valid_best')
+                
+        print("Post training Results {}".format(results))
 
-print("Post training Results {}".format(results))
-plt.title("Training and validation loss curves")
-plt.plot(train_l, 'go-',label="train")
-plt.plot(test_l, 'rs-', label='val')
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.legend()
-plt.savefig("plots/GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
-plt.show()
+        plt.title("Training and validation loss curves")
+        plt.plot(train_l, 'go-',label="train")
+        plt.plot(valid_l, 'rs-', label='val')
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(run, EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        plt.show()
 
-plt.title("Training and validation roc_auc curves")
-plt.plot(train_roc_auc, 'go-',label="train")
-plt.plot(valid_roc_auc, 'rs-', label='val')
-plt.xlabel("Epochs")
-plt.ylabel("ROC_AUC")
-plt.legend()
-plt.savefig("plots/GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
-plt.show()
+        plt.title("Training and validation roc_auc curves")
+        plt.plot(train_roc_auc, 'go-',label="train")
+        plt.plot(valid_roc_auc, 'rs-', label='val')
+        plt.xlabel("Epochs")
+        plt.ylabel("ROC_AUC")
+        plt.legend()
+        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(run,EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        plt.show()
+
+        test_perfs.append(results['final_train'])
+
+test_perf = torch.tensor(test_perfs)
+print('===========================')
+print(f'Final Test: {test_perf.mean():.4f} ± {test_perf.std():.4f}')
 
