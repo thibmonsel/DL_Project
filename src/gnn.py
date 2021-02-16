@@ -76,10 +76,10 @@ class Net(torch.nn.Module):
         self.batchnorm.reset_parameters()
         
         #global pool
-        try :
+        if self.pool_layer == 'global_attention':
             self.pool_layer.reset_parameters()
-        except Exception as e: pass
     
+        #fully connected
         self.linear1.reset_parameters()
         self.linear2.reset_parameters()
         
