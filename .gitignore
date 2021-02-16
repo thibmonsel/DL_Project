@@ -1,0 +1,8 @@
+*.pth
+*.png
+*.gz
+*.txt
+*.json
+*.pyc
+*.pt
+.DS_Store
