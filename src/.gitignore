@@ -4,3 +4,6 @@
 .vscode/
 ogbg_molhiv/
 plots/
+*.gz
+*.txt
+*.pyc
