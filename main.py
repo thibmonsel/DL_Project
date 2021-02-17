@@ -85,16 +85,17 @@ if __name__ == '__main__':
     AGGR = ['add', 'max', 'mean']
     HIDDEN_OUT_CHANNEL = 64
     OUT_CHANNEL = 32
-    POOL_LAYERS = ['add', 'max', 'mean', 'sort', 'global_attention']
-    k = 3
+    POOL_LAYERS = ['add', 'max', 'mean', 'sort']
+    k = 15
+    ATTENTION = True
     EPOCHS = 3
 
     #model = VanNet(100)
-    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[1])
+    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION)
     model.to(device)
 
     # optimization hyperparameters
-    optimizer = torch.optim.Adam(model.parameters(), lr = 0.0001) 
+    optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) 
     weights = torch.Tensor([1, 10])
     weights = weights.to(device)
     loss_fn = nn.CrossEntropyLoss(weight=weights)
@@ -102,9 +103,7 @@ if __name__ == '__main__':
 
     test_perfs = []
     for run in range(1,11) :
-        print()
         print(f'Run {run}:')
-        print()
 
         model.reset_parameters()
         
@@ -144,25 +143,25 @@ if __name__ == '__main__':
                 
         print("Post training Results {}".format(results))
 
-        plt.title("Training and validation loss curves")
-        plt.plot(train_l, 'go-',label="train")
-        plt.plot(valid_l, 'rs-', label='val')
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(run, EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
-        plt.show()
+        # plt.title("Training and validation loss curves")
+        # plt.plot(train_l, 'go-',label="train")
+        # plt.plot(valid_l, 'rs-', label='val')
+        # plt.xlabel("Epochs")
+        # plt.ylabel("Loss")
+        # plt.legend()
+        # plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(run, EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        # plt.show()
 
-        plt.title("Training and validation roc_auc curves")
-        plt.plot(train_roc_auc, 'go-',label="train")
-        plt.plot(valid_roc_auc, 'rs-', label='val')
-        plt.xlabel("Epochs")
-        plt.ylabel("ROC_AUC")
-        plt.legend()
-        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(run,EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
-        plt.show()
+        # plt.title("Training and validation roc_auc curves")
+        # plt.plot(train_roc_auc, 'go-',label="train")
+        # plt.plot(valid_roc_auc, 'rs-', label='val')
+        # plt.xlabel("Epochs")
+        # plt.ylabel("ROC_AUC")
+        # plt.legend()
+        # plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(run,EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        # plt.show()
 
-        test_perfs.append(results['final_train'])
+        test_perfs.append(results['final_test'])
 
 test_perf = torch.tensor(test_perfs)
 print('===========================')

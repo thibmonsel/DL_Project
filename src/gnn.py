@@ -10,7 +10,7 @@ from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, glo
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 class Net(torch.nn.Module):
-    def __init__(self, in_channels, number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1):
+    def __init__(self, in_channels, number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1, attention=False):
         super(Net, self).__init__()
         self.in_channels = in_channels
         self.number_hidden_layers = number_hidden_layers #number of hidden GraphConv layers
@@ -20,6 +20,7 @@ class Net(torch.nn.Module):
         self.out_channel = out_channel
         self.atom_encoder = AtomEncoder(emb_dim=self.in_channels)
         self.k = k
+        self.attention = attention
 
         
         self.graph_conv_list = nn.ModuleList()
@@ -33,8 +34,8 @@ class Net(torch.nn.Module):
                     
         self.graph_conv_list.append(GraphConv(in_channels = self.hidden_out_channel, out_channels = self.out_channel, aggr=self.aggr))
                 
-        if self.pool_layer == 'global_attention' :
-            self.global_att = GlobalAttention(nn.Sequential(nn.Linear(self.out_channel, 10), nn.Linear(10, 1)))
+        if self.attention :
+            self.attention = GlobalAttention(nn.Sequential(nn.Linear(self.out_channel, 10), nn.Linear(10, 1)))
          
         self.linear1 = nn.Linear(self.k*self.out_channel, 16)
         self.linear2 = nn.Linear(16, 2)
@@ -49,7 +50,9 @@ class Net(torch.nn.Module):
             if i == len(self.graph_conv_list) - 1: continue
             x = self.batchnorm(x)  
         
-        
+        if self.attention:
+            x = self.global_att(x, data.batch)
+            
         if self.pool_layer == 'add':
             x = global_add_pool(x, data.batch)
         if self.pool_layer == 'mean':
@@ -58,9 +61,7 @@ class Net(torch.nn.Module):
             x = global_max_pool(x, data.batch)
         if self.pool_layer == 'sort':
             x = global_sort_pool(x, data.batch, self.k)
-        if self.pool_layer == 'global_attention':
-            x = self.global_att(x, data.batch)
-            
+   
         x = F.relu(self.linear1(x))
         x = self.linear2(x)
         
