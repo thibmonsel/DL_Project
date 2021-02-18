@@ -87,16 +87,14 @@ if __name__ == '__main__':
     OUT_CHANNEL = 32
     POOL_LAYERS = ['add', 'max', 'mean', 'sort']
     k = 15
-    ATTENTION = True
-    EPOCHS = 3
-
+    EPOCHS = 25
+    lr = 0.05
+    
     #model = VanNet(100)
-    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION)
+    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1])
     model.to(device)
 
-    # optimization hyperparameters
-    optimizer = torch.optim.SGD(model.parameters(), lr = 0.05) 
-    weights = torch.Tensor([1, 10])
+    weights = torch.Tensor([1, 3])
     weights = weights.to(device)
     loss_fn = nn.CrossEntropyLoss(weight=weights)
     #scheduler = MultiplicativeLR(optimizer, lr_lambda= lambda epoch : 0.95)
@@ -106,6 +104,8 @@ if __name__ == '__main__':
         print(f'Run {run}:')
 
         model.reset_parameters()
+        # optimization hyperparameters
+        optimizer = torch.optim.SGD(model.parameters(), lr = lr) 
         
         results = {'highest_valid': 0,
                 'final_train': 0,
@@ -165,5 +165,6 @@ if __name__ == '__main__':
 
 test_perf = torch.tensor(test_perfs)
 print('===========================')
+print("Params : EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION, lr",EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION, lr)
 print(f'Final Test: {test_perf.mean():.4f} ± {test_perf.std():.4f}')
 
