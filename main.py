@@ -10,8 +10,7 @@ from torch_geometric.data import DataLoader
 
 from data_loader import TrainValTestLoader
 from utils import save_ckpt
-from src.vanillagnn import VanNet
-from src.gnn import Net
+from src.rgcn import Net
 
 # With have 3.5% of positive label in our dataset
 
@@ -91,7 +90,7 @@ if __name__ == '__main__':
     lr = 0.05
     
     #model = VanNet(100)
-    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1])
+    model = Net(IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1],device=device)
     model.to(device)
 
     weights = torch.Tensor([1, 3])
@@ -165,6 +164,6 @@ if __name__ == '__main__':
 
 test_perf = torch.tensor(test_perfs)
 print('===========================')
-print("Params : EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION, lr",EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION, lr)
+print("Params : EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], ATTENTION, lr",EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[1], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[-1], lr)
 print(f'Final Test: {test_perf.mean():.4f} ± {test_perf.std():.4f}')
 
