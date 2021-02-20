@@ -9,7 +9,7 @@ from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, glo
 
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
-class Net(torch.nn.Module):
+class GCN_Net(torch.nn.Module):
     def __init__(self, in_channels, number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1):
         super(Net, self).__init__()
         self.in_channels = in_channels
@@ -34,7 +34,7 @@ class Net(torch.nn.Module):
         self.graph_conv_list.append(GraphConv(in_channels = self.hidden_out_channel, out_channels = self.out_channel, aggr=self.aggr))
          
         self.linear1 = nn.Linear(self.k*self.out_channel, 16)
-        self.linear2 = nn.Linear(16, 2)
+        self.linear2 = nn.Linear(16, 1)
             
     def forward(self, data):
         x = self.atom_encoder(data.x)
