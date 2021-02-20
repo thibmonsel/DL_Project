@@ -41,7 +41,7 @@ def eval(model,device, loader, evaluator):
             data = data.to(device)
             out = model(data)
             loss = loss_fn(out, data.y.to(out.dtype))
-            running_eval_loss +=loss.item()
+            running_eval_loss += loss.item() * len(data.y)
             concat_prediction = torch.cat((concat_prediction, out.cpu()), 0)
             concat_target = torch.cat((concat_target, data.y.cpu()), 0)
         
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         valid_l, train_l, valid_roc_auc, train_roc_auc = [], [], [], []
         for epoch in range(EPOCHS):
             loss = train(model, device, train_loader, loss_fn, optimizer) 
-            train_roc, train_loss= eval(model,device, train_loader, evaluator)
+            train_roc, train_loss = eval(model,device, train_loader, evaluator)
             valid_roc, valid_loss = eval(model,device, valid_loader, evaluator)
             test_roc, test_loss= eval(model, device, test_loader, evaluator)
            
