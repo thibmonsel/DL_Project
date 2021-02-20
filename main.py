@@ -74,9 +74,9 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     EPOCHS = 25
     
-    #model = VanNet(100)
-    #model = GCN_Net(*gnn_params.values())
-    model = Net(*rgcn_params.values())
+    parameters = rgcn_params # or gnn_params
+    #model = GCN_Net(*parameters.values())
+    model = Net(*parameters.values())
     model.to(device)
 
     loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -140,5 +140,7 @@ if __name__ == '__main__':
 
 test_perf = torch.tensor(test_perfs)
 print('===========================')
+print("model parameters : {}".format(parameters))
 print(f'Final Test: {test_perf.mean():.4f} ± {test_perf.std():.4f}')
+
 
