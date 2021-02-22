@@ -74,9 +74,9 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     EPOCHS = 25
     
-    parameters = rgcn_params # or gnn_params
-    #model = GCN_Net(*parameters.values())
-    model = Net(*parameters.values())
+    parameters = gnn_params # or gnn_params
+    model = GCN_Net(*parameters.values())
+    #model = Net(*parameters.values())
     model.to(device)
 
     loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.legend()
-        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(run, EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}.png".format(run, EPOCHS, *parameters.values()))
         plt.show()
 
         plt.title("Training and validation roc_auc curves")
@@ -133,7 +133,7 @@ if __name__ == '__main__':
         plt.xlabel("Epochs")
         plt.ylabel("ROC_AUC")
         plt.legend()
-        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(run,EPOCHS, IN_CHANNELS, NUMBER_HIDDEN_LAYERS, AGGR[0], HIDDEN_OUT_CHANNEL, OUT_CHANNEL, POOL_LAYERS[2]))
+        plt.savefig("plots/run_{}_GraphConv_epoch{}_inChannel{}_numHiddenLayers{}_aggr{}_hiddenOutChannel{}_globalPool{}_metrics.png".format(run,EPOCHS,*parameters.values()))
         plt.show()
 
         test_perfs.append(results['final_test'])
