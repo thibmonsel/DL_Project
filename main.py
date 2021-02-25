@@ -8,13 +8,9 @@ import matplotlib.pyplot as plt
 from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from torch_geometric.data import DataLoader
 
-from data_loader import TrainValTestLoader
-
 from params import gnn_params, rgcn_params
 from src.gnn import GCN_Net
 from src.rgcn import Net
-
-# With have 3.5% of positive label in our dataset
 
 def train(model, device, train_loader, loss_fn, optimizer):
     model.train()
@@ -59,11 +55,13 @@ if __name__ == '__main__':
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=64, shuffle=False)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    EPOCHS = 25
+    EPOCHS = 2
     
-    parameters = gnn_params # or gnn_params
-    model = GCN_Net(*parameters.values())
-    #model = Net(*parameters.values())
+    #parameters = gnn_params 
+    #model = GCN_Net(*parameters.values())
+    
+    parameters = rgcn_params
+    model = Net(*parameters.values())
     model.to(device)
 
     loss_fn = torch.nn.BCEWithLogitsLoss()

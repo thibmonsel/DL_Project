@@ -1,11 +1,8 @@
 
-#https://github.com/rusty1s/pytorch_geometric/blob/master/examples/rgcn.py
-#taking into account only nodes and not edges attributes
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import FastRGCNConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, GlobalAttention, BatchNorm
+from torch_geometric.nn import FastRGCNConv, GraphConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, BatchNorm
 
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
@@ -20,17 +17,18 @@ class Net(torch.nn.Module):
         self.atom_encoder = AtomEncoder(emb_dim=in_channels)
         self.batchnorm = BatchNorm(in_channels=hidden_out_channel)
 
-        self.rgcn_list = []
+        self.rgcn_list = nn.ModuleList()
         self.rgcn_list.append(FastRGCNConv(in_channels=in_channels, out_channels=hidden_out_channel, num_relations=NUM_RELATIONS))
         if number_hidden_layers != 0 : 
             for i in range(number_hidden_layers):
                 self.rgcn_list.append(FastRGCNConv(in_channels=hidden_out_channel, out_channels=hidden_out_channel, num_relations=NUM_RELATIONS))
+    
+        self.rgcn_list.append(FastRGCNConv(in_channels=hidden_out_channel, out_channels=hidden_out_channel, num_relations=NUM_RELATIONS))
+        self.rgcn_list.append(GraphConv(in_channels= hidden_out_channel, out_channels= hidden_out_channel, aggr='max'))
+        self.rgcn_list.append(GraphConv(in_channels= hidden_out_channel, out_channels= out_channel, aggr='max'))
         
-        self.rgcn_list.append(FastRGCNConv(in_channels=hidden_out_channel, out_channels=out_channel, num_relations=NUM_RELATIONS))
-     
-
         self.linear1 = nn.Linear(k*out_channel, 16)
-        self.linear2 = nn.Linear(16, 2)
+        self.linear2 = nn.Linear(16, 1)
 
     def forward(self, data):
         x = self.atom_encoder(data.x)
@@ -38,7 +36,7 @@ class Net(torch.nn.Module):
         edge_attr = data.edge_attr
         edge_attr = torch.LongTensor([ edge_type[0] + edge_type[1]*5 + edge_type[2]*30 for edge_type in edge_attr]).to(self.device)
         for i, layer in enumerate(self.rgcn_list) : 
-            x = layer(x, edge_index,edge_attr)
+            x = layer(x, edge_index, edge_attr)
             x = F.relu(x)
             if i == len(self.rgcn_list) - 1: continue
             x = self.batchnorm(x)  

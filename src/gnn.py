@@ -5,7 +5,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, GlobalAttention, BatchNorm
+from torch_geometric.nn import GraphConv, global_add_pool, global_mean_pool, global_max_pool, global_sort_pool, BatchNorm
 
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
@@ -30,7 +30,7 @@ class GCN_Net(torch.nn.Module):
         if self.number_hidden_layers != 0 : 
             for i in range(self.number_hidden_layers):
                 self.graph_conv_list.append(GraphConv(in_channels= self.hidden_out_channel, out_channels= self.hidden_out_channel, aggr=self.aggr))
-                    
+           
         self.graph_conv_list.append(GraphConv(in_channels = self.hidden_out_channel, out_channels = self.out_channel, aggr=self.aggr))
          
         self.linear1 = nn.Linear(self.k*self.out_channel, 16)
