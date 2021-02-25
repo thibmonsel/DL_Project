@@ -1,7 +1,4 @@
 
-#https://github.com/rusty1s/pytorch_geometric/blob/master/examples/rgcn.py
-#taking into account only nodes and not edges attributes
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
