@@ -45,7 +45,7 @@ Our neural network will be composed of 2 blocks. The first block will learn the 
 | :--:|
 | *Model Architecture* |
 
-|![nn types](static/nn_inception.png)|
+|![nn types](static/inception.png)|
 | :--:|
 | *Inception Model Architecture* |
 
