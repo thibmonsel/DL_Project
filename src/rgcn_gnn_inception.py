@@ -8,9 +8,9 @@ from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 
 NUM_RELATIONS = 60
 
-class Net(torch.nn.Module):
+class InceptionNet(torch.nn.Module):
     def __init__(self, in_channels, number_hidden_layers, aggr, hidden_out_channel, out_channel, pool_layer, k=1, device=None):
-        super(Net, self).__init__()
+        super(InceptionNet, self).__init__()
         self.pool_layer = pool_layer # 'add', 'max', 'mean' or 'sort'
         self.device = device
         self.k = k

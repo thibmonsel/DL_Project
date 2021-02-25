@@ -9,6 +9,7 @@ from ogb.graphproppred import PygGraphPropPredDataset, Evaluator
 from torch_geometric.data import DataLoader
 
 from params import gnn_params, rgcn_params
+from src.rgcn_gnn_inception import InceptionNet
 from src.gnn import GCN_Net
 from src.rgcn import Net
 
@@ -55,13 +56,17 @@ if __name__ == '__main__':
     test_loader = DataLoader(dataset[split_idx["test"]], batch_size=64, shuffle=False)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    EPOCHS = 2
+    EPOCHS = 1
     
-    #parameters = gnn_params 
-    #model = GCN_Net(*parameters.values())
+    parameters = gnn_params 
+    model = GCN_Net(*parameters.values())
     
-    parameters = rgcn_params
-    model = Net(*parameters.values())
+    # parameters = rgcn_params
+    # model = InceptionNet(*parameters.values())
+    
+    # parameters = rgcn_params
+    # model = Net(*parameters.values())
+    
     model.to(device)
 
     loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -96,7 +101,7 @@ if __name__ == '__main__':
               f'Train: {train_roc:.4f}, Val: {valid_roc:.4f}, '
               f'Test: {test_roc:.4f}') 
              
-        print("Post training Results {}".format(results))
+        #print("Post training Results {}".format(results))
 
         test_perfs.append(results['final_test'])
 
