@@ -1,5 +1,4 @@
 *.pth
-*.png
 *.gz
 *.txt
 *.json
