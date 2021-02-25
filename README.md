@@ -47,8 +47,9 @@ Our neural network will be composed of 2 blocks. The first block will learn the 
 
 ## General use
 
-To tune hyperparametre please change content in ```params.py```. 
+To tune hyperparameters please change content in ```params.py```. 
 To launch training please run : 
 ```
 python main.py
 ```
+No model saving is done in our code.
