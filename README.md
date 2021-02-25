@@ -45,6 +45,10 @@ Our neural network will be composed of 2 blocks. The first block will learn the 
 | :--:|
 | *Model Architecture* |
 
+|![nn types](static/nn_inception.png)|
+| :--:|
+| *Inception Model Architecture* |
+
 ## General use
 
 To tune hyperparameters please change content in ```params.py```. 
